@@ -1,0 +1,15 @@
+# Node modules
+node_modules/
+
+# Expo
+.expo/
+.expo-shared/
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Environment files
+.env
