@@ -10,9 +10,31 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.myapp"
+      "bundleIdentifier": "com.anonymous.myapp",
+      "infoPlist": {
+        "UIBackgroundModes": ["fetch", "remote-notification"],
+        "NSUserTrackingUsageDescription": "This identifier will be used to deliver personalized notifications.",
+        "UNNotificationCategory": [
+          {
+            "identifier": "med-reminders-category",
+            "actions": [
+              {
+                "identifier": "snooze-action",
+                "title": "Snooze",
+                "options": ["foreground"]
+              },
+              {
+                "identifier": "taken-action",
+                "title": "Taken",
+                "options": ["foreground"]
+              }
+            ]
+          }
+        ]
+      }
     },
     "android": {
+      "googleServicesFile": "./android/app/google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"

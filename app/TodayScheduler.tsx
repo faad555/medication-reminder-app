@@ -3,6 +3,7 @@ import { View, StyleSheet, Image, TouchableOpacity, Alert, FlatList, ActivityInd
 import { Text } from './components/customizableFontElements';
 import { database, account, config } from "../config/appwriteConfig";
 import { ID, Permission, Role, Query } from 'appwrite';
+import { convertUTCToLocalTime } from "./utils/utcTimeConversion";
 
 export default function MedicationSchedule() {
   const [medicinesReminders, setMedicineReminders] = useState<any[]>([]);
@@ -10,7 +11,10 @@ export default function MedicationSchedule() {
 
   const getTodayDateString = () => {
     const today = new Date();
-    return today.toISOString().split("T")[0]; // 'yyyy-mm-dd'
+    const year = today.getFullYear();
+    const month = (today.getMonth() + 1).toString().padStart(2, "0"); // months are 0-indexed
+    const day = today.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
 
   const fetchTodayMedicines = async () => {
@@ -21,12 +25,15 @@ export default function MedicationSchedule() {
       console.log('user is here', user)
       const today = getTodayDateString();
 
+      console.log('today is here', today);
+
       const res = await database.listDocuments(
         config.db,
         config.col.reminders,
         [
           Query.equal("userId", user.$id),
           Query.equal("date", today),
+          Query.orderDesc("time"),
         ],
       );
 
@@ -89,7 +96,7 @@ export default function MedicationSchedule() {
             </View>
             <View style={styles.medicineInfo}>
               <Text style={styles.label}>⏰ Time:</Text>
-              <Text style={styles.value}>{item.time || 'No time set'}</Text>
+              <Text style={styles.value}>{convertUTCToLocalTime(item.time || '') || 'No time set'}</Text>
             </View>
             <View style={styles.medicineInfo}>
               <Text style={styles.label}>✅ Taken:</Text>

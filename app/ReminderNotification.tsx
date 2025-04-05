@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, Pressable, Alert } from "react-native";
+import { View, Text, StyleSheet, Image, Pressable, Alert, BackHandler } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { database, config } from "../config/appwriteConfig";
+import { addMinutesToUTCTimeString, convertUTCToLocalTime } from "./utils/utcTimeConversion";
 
 const ReminderNotification = () => {
-  
   const { time, medicineName, description, reminderId } = useLocalSearchParams<{
     time: string;
     medicineName: string;
@@ -12,10 +12,11 @@ const ReminderNotification = () => {
     reminderId?: string;
   }>();
 
-  const [taken, setTaken] = useState(false);
+  const [taken, setTaken] = useState(false); 
   const [snoozed, setSnoozed] = useState(false);
 
   const handleTaken = async () => {
+    console.log(time, medicineName, description, reminderId);
     setTaken(true);
     Alert.alert("✅ Medication Taken", `You marked ${medicineName} as taken.`);
 
@@ -23,6 +24,7 @@ const ReminderNotification = () => {
       await database.updateDocument(config.db, config.col.reminders, reminderId, {
         taken: true,
       });
+      BackHandler.exitApp();
     }
   };
 
@@ -33,26 +35,11 @@ const ReminderNotification = () => {
     if (reminderId) {
       await database.updateDocument(config.db, config.col.reminders, reminderId, {
         snoozed: true,
+        time: addMinutesToUTCTimeString(time, 5)
+        
       });
+      BackHandler.exitApp();
     }
-
-    // // 🔁 Optional: Reschedule for 10 minutes later
-    // await Notifications.scheduleNotificationAsync({
-    //   content: {
-    //     title: `⏰ Reminder: ${medicineName}`,
-    //     body: description || "Please take your medicine.",
-    //     sound: "default",
-    //     data: {
-    //       medicineName,
-    //       time,
-    //       reminderId,
-    //     },
-    //   },
-    //   trigger: {
-    //     seconds: 600, // 10 minutes
-    //     repeats: false,
-    //   },
-    // });
   };
 
   return (
@@ -60,7 +47,7 @@ const ReminderNotification = () => {
       <View style={styles.card}>
         <Image source={require("../assets/images/Alarm.png")} style={styles.icon} />
         <Text style={styles.title}>{medicineName || "Medication Reminder"}</Text>
-        <Text style={styles.time}>Scheduled for: <Text style={styles.timeHighlight}>{time}</Text></Text>
+        <Text style={styles.time}>Scheduled for: <Text style={styles.timeHighlight}>{convertUTCToLocalTime(time || '')}</Text></Text>
         {description && <Text style={styles.description}>{description}</Text>}
 
         <View style={styles.buttons}>

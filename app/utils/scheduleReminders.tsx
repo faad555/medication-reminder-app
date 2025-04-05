@@ -1,6 +1,6 @@
-import * as Notifications from 'expo-notifications';
+// import * as Notifications from 'expo-notifications';
 import { account, database, config } from '../../config/appwriteConfig';
-import { Platform } from 'react-native';
+// import { Platform } from 'react-native';
 import { ID, Permission, Role } from 'appwrite';
 
 export const scheduleReminders = async (
@@ -11,7 +11,6 @@ export const scheduleReminders = async (
 ) => {
   console.log("Scheduling reminder...", times);
   const user = await account.get();
-  const secondsFromNow = 10; // for instant test
   
 
   // const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -37,24 +36,15 @@ export const scheduleReminders = async (
   //   });
   // }
 
-  for (const t of times) {
+
+  await Promise.all(times.map(t => {
     const [hourStr, minuteStr] = t.split(':');
     const hour = parseInt(hourStr);
     const minute = parseInt(minuteStr);
-
+  
     const reminderDate = new Date();
-    reminderDate.setHours(hour);
-    reminderDate.setMinutes(minute);
-    reminderDate.setSeconds(0);
-
-    const now = new Date();
-    const secondsUntilReminder = Math.floor((reminderDate.getTime() - now.getTime()) / 1000);
-
-    if (secondsUntilReminder <= 0) {
-      console.warn(`Skipping reminder for ${t} — time is in the past.`);
-      continue;
-    }
-
+    reminderDate.setHours(hour, minute, 0, 0);
+  
     const reminder = {
       medicineName,
       time: t,
@@ -65,15 +55,15 @@ export const scheduleReminders = async (
       userId: user.$id,
       medicines: medicineId,
     };
-
-    const saved = await database.createDocument(
+  
+    return database.createDocument(
       config.db,
       config.col.reminders,
       ID.unique(),
       reminder,
       [Permission.read(Role.user(user.$id)), Permission.write(Role.user(user.$id))],
     );
-
+  }));
     // await Notifications.scheduleNotificationAsync({
     //   content: {
     //     title: `Time for ${medicineName}`,
@@ -95,8 +85,7 @@ export const scheduleReminders = async (
     // });
   }
 
-  console.log("✅ Notification scheduled to fire in", secondsFromNow, "seconds");
-};
+  // console.log("✅ Notification scheduled to fire in", secondsFromNow, "seconds");
 
 
 // export const scheduleReminders = async (

@@ -60,6 +60,7 @@ export default function ScanMedicineScreen() {
     try {
       const blocks = await MLKitOcr.detectFromFile(uri);
       const combinedText = blocks.map((block) => block.text).join('\n');
+      console.log('combined test', combinedText);
       extractDataAndRoutToMainScreen(combinedText);
     } catch (err) {
       console.error('OCR error:', err);
@@ -113,7 +114,7 @@ export default function ScanMedicineScreen() {
           medicineType: extractedData.medicineType,
           medicineName: extractedData.medicineName,
           frequency: extractedData.frequency ?? '',
-          quantity: extractedData.quantity ?? '',
+          quantity: extractedData.doseAmount ?? '',
         },
       });
   }
