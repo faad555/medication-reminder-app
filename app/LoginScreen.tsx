@@ -1,13 +1,38 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground,Image,} from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, TextInput, TouchableOpacity, StyleSheet, ImageBackground,Image, Alert} from "react-native";
 import { Ionicons } from "@expo/vector-icons"; 
+import { useRouter } from "expo-router";
 const localImage = require("../assets/images/loginImage.jpg");
 const localLogo = require("../assets/images/logo.png");
-
+import { Text, Link } from './components/customizableFontElements';
 
 const LoginScreen = () => {
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const router = useRouter();
 
+   // Function to handle login
+   const handleLogin = async () => {
+    try {
+      const response = await fetch("https://<your-project-id>.cloudfunctions.net/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber, password }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        Alert.alert("Success", data.message);
+        router.push("/MainScreen"); // Navigate to HomeScreen on successful login
+      } else {
+        Alert.alert("Error", data.message);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    }
+  };
   return (
     <View style={styles.container}>
     
@@ -16,7 +41,7 @@ const LoginScreen = () => {
         style={styles.background}
       >
         <TouchableOpacity style={styles.backButton}>
-          <Text style={styles.backText}>Back</Text>
+          <Link href={"/HomeScreen"} style={styles.backText}>Back</Link>
         </TouchableOpacity>
         <Image
           source={localLogo} 
@@ -29,15 +54,21 @@ const LoginScreen = () => {
         <Text style={styles.title}>Login to MedRem</Text>
         <Text style={styles.subtitle}>Your Smart Medication Reminder</Text>
 
-      
-        <TextInput style={styles.input} placeholder="Email or Username" />
+        <TextInput
+          style={styles.input}
+          placeholder="Phone Number"
+          keyboardType="phone-pad"
+          value={phoneNumber}
+          onChangeText={setPhoneNumber}
+        />
 
-      
         <View style={styles.passwordContainer}>
           <TextInput
             style={styles.passwordInput}
             placeholder="Password"
             secureTextEntry={!passwordVisible}
+            value={password}
+            onChangeText={setPassword}
           />
           <TouchableOpacity
             onPress={() => setPasswordVisible(!passwordVisible)}
@@ -57,14 +88,14 @@ const LoginScreen = () => {
         </TouchableOpacity>
 
         {/* Login Button */}
-        <TouchableOpacity style={styles.loginButton}>
+        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
           <Text style={styles.buttonText}>Log in</Text>
         </TouchableOpacity>
 
         {/* Signup Link */}
         <Text style={styles.signupText}>
           Don't have an account?{" "}
-          <Text style={styles.signupLink}>Sign up</Text>
+          <Link href = {"/AddCaregiver"} style={styles.signupLink}>Sign up</Link>
         </Text>
       </View>
     </View>
@@ -92,7 +123,6 @@ const styles = StyleSheet.create({
   },
   backText: {
     color: "#35134F",
-    fontSize: 16,
   },
   logo: {
     width: 80,
@@ -115,14 +145,12 @@ const styles = StyleSheet.create({
     marginTop: -20,
   },
   title: {
-    fontSize: 26,
     fontWeight: "bold",
     color: "#35134F",
     marginBottom: 50,
     top: 30
   },
   subtitle: {
-    fontSize: 14,
     color: "#777",
     marginBottom: 40,
   },
@@ -150,7 +178,6 @@ const styles = StyleSheet.create({
   },
   forgotPassword: {
     color: "#777",
-    fontSize: 12,
     alignSelf: "flex-end",
     marginTop: 10,
     left:110
@@ -164,11 +191,9 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#fff",
-    fontSize: 16,
     fontWeight: "bold",
   },
   signupText: {
-    fontSize: 14,
     marginTop: 10,
   },
   signupLink: {

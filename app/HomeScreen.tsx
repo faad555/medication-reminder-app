@@ -1,36 +1,69 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet,ImageBackground } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  ImageBackground,
+  ActivityIndicator,
+} from "react-native";
+import { Text, Link } from "./components/customizableFontElements";
+import { useRouter } from "expo-router";
+import { registerPushToken } from "./utils/registerPushToken";
+
 const localImage = require("../assets/images/background.jpg");
 const localLogo = require("../assets/images/logo.png");
+
+const { account } = require("../config/appwriteConfig");
+
 const WelcomeScreen = () => {
+  const router = useRouter();
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const session = await account.get();
+        console.log("User session found:", session);
+        router.replace("/MainScreen");
+      } catch (error) {
+        console.log("No active session found:", error.message);
+        setIsCheckingSession(false); // Show Welcome screen
+      }
+    };
+
+    checkSession();
+  }, []);
+
+  if (isCheckingSession) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#E75480" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-     <ImageBackground 
-        source={localImage}  
-        style={styles.background}
-        
-      ></ImageBackground>
+      <ImageBackground source={localImage} style={styles.background} />
 
-      {/* Content Box */}
       <View style={styles.card}>
-        <ImageBackground 
-        source={localLogo}  
-        style={styles.logoPlaceholder}
-        
-      ></ImageBackground>
+        <ImageBackground source={localLogo} style={styles.logoPlaceholder} />
 
         <Text style={styles.title}>Welcome to </Text>
         <Text style={styles.subtitle}>MedRem</Text>
         <Text style={styles.description}>Never miss a Med Again</Text>
 
-        {/* Buttons */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity style={styles.signUpButton}>
-            <Text style={styles.buttonText}>Sign up</Text>
+            <Link href="/AddCaregiver" style={styles.buttonText}>
+              Sign up
+            </Link>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.loginButton} >
-            <Text style={styles.buttonText}>Log in</Text>
+          <TouchableOpacity style={styles.loginButton}>
+            <Link href="/PhoneLoginScreen" style={styles.buttonText}>
+              Log in
+            </Link>
           </TouchableOpacity>
         </View>
       </View>
@@ -38,20 +71,24 @@ const WelcomeScreen = () => {
   );
 };
 
-//Styles
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+  },
   background: {
     position: "absolute",
-    width: "100%",         
-    height: "100%",   
-    top: -50,                          
-    resizeMode: "cover", 
+    width: "100%",
+    height: "100%",
+    top: -50,
+    resizeMode: "cover",
   },
   card: {
     width: "99%",
@@ -60,60 +97,56 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     alignItems: "center",
-    elevation: 5, // Shadow effect for Android
+    elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    top: 115
+    top: 115,
   },
   logoPlaceholder: {
     width: 115,
     height: 117,
-    backgroundColor: "#EBEBEB", 
+    backgroundColor: "#EBEBEB",
     borderRadius: 50,
     marginBottom: 10,
-    top: 50
+    top: 50,
   },
   title: {
-    fontSize: 25,
     fontWeight: "bold",
     color: "#5A3E85",
-    top: 50
+    top: 50,
   },
   subtitle: {
-    fontSize: 26,
     fontWeight: "bold",
     color: "#5A3E85",
     marginBottom: 5,
-    top: 50
+    top: 50,
   },
   description: {
-    fontSize: 16,
     color: "#888",
     marginBottom: 20,
-    top: 60
+    top: 60,
   },
   buttonContainer: {
     flexDirection: "row",
     gap: 40,
-    top: 155
+    top: 155,
   },
   signUpButton: {
-    backgroundColor: "#F8C8DC", // Light pink
+    backgroundColor: "#F8C8DC",
     paddingVertical: 10,
     paddingHorizontal: 27,
     borderRadius: 20,
   },
   loginButton: {
-    backgroundColor: "#E75480", // Dark pink
+    backgroundColor: "#E75480",
     paddingVertical: 10,
     paddingHorizontal: 27,
     borderRadius: 20,
   },
   buttonText: {
     color: "#fff",
-    fontSize: 16,
     fontWeight: "bold",
   },
 });

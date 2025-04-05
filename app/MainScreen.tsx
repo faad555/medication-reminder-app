@@ -1,7 +1,24 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Text } from './components/customizableFontElements';
+import { registerPushToken } from './utils/registerPushToken';
+const MainScreen = () => {
+  const router = useRouter();
+  const { fromLogin } = useLocalSearchParams();
 
-const HomeScreen = () => {
+  useEffect(() => {
+    const registerToken = async () => {
+      try {
+        await registerPushToken();
+      } catch (error) {
+        console.error("Error registering push token:", error);
+      }
+    };
+
+    if(fromLogin) registerToken();
+  }, []);
+
   return (
     <View style={styles.container}>
       
@@ -10,21 +27,26 @@ const HomeScreen = () => {
         <Text style={styles.title2}>Healthy</Text>
         <Text style={styles.subtitle}>Your Health, Your Control, Check Today’s Meds</Text>
       </View>
-      
-      
+            
       <View style={styles.menuContainer}>
-        <MenuButton title="Add your Med" icon={require('../assets/images/AddMed.png')} />
-        <MenuButton title="Today Schedule" icon={require('../assets/images/todaySchedule.png')} />
-        <MenuButton title="Settings" icon={require('../assets/images/setting.png')} />
-        <MenuButton title="Report" icon={require('../assets/images/Report.png')} />
+        <MenuButton  title="Add your Medicine" icon={require('../assets/images/AddMed.png')} onPress={() => router.push("/AddMedicine")}/>
+        <MenuButton title="Today Schedule" icon={require('../assets/images/todaySchedule.png')} onPress={() => router.push("/TodayScheduler")} />
+        <MenuButton title="Settings" icon={require('../assets/images/setting.png')} onPress={() => router.push("/Settings")}/>
+        <MenuButton title="Report" icon={require('../assets/images/Report.png')} onPress={() => router.push("/MedicineReportHistory")}/>
       </View>
     </View>
   );
 };
 
-const MenuButton = ({ title, icon }) => {
+interface MenuButtonProps {
+  title: string;
+  icon: any; // Replace 'any' with a more specific type if possible
+  onPress: () => void;
+}
+
+const MenuButton: React.FC<MenuButtonProps> = ({ title, icon, onPress }) => {
   return (
-    <TouchableOpacity style={styles.menuButton}>
+    <TouchableOpacity style={styles.menuButton} onPress={onPress}>
       <Text style={styles.buttonText}>{title}</Text>
       <Image source={icon} style={styles.icon} />
     </TouchableOpacity>
@@ -85,7 +107,6 @@ const styles = StyleSheet.create({
     top: 40
   },
   buttonText: {
-    fontSize: 18,
     fontWeight: 'bold',
     color: '#3D2352',
     left: 40,
@@ -98,4 +119,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen;
+export default MainScreen;

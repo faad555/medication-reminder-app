@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View,TextInput, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+import { Text, Link } from './components/customizableFontElements';
 
-const AddMedicineScreen = () => {
+const AddMedicine = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -9,21 +10,19 @@ const AddMedicineScreen = () => {
         <Text style={styles.headerText}>Add new Medicine</Text>
       </View>
       <View style={styles.formContainer}>
-        <Text style={styles.label}>Scan via Camera</Text>
-        <TouchableOpacity style={styles.scanButton}>
-          <Text style={styles.scanText}>📷 Scan</Text>
+        <TouchableOpacity 
+          style={styles.scanButton} 
+         >
+          <View>
+            <Link href={"/ScanMedicineScreen"} style={styles.scanText}>Scan via Camera</Link>
+          </View>
         </TouchableOpacity>
-        <Text style={styles.orText}>OR</Text>
-        <Text style={styles.label}>Name</Text>
-        <TextInput style={styles.input} />
-        <Text style={styles.label}>Amount</Text>
-        <TextInput style={styles.input} placeholder='Dose (eg - 2)' />
-        <Text style={styles.label}>Reminder</Text>
-        <TextInput style={styles.input} placeholder='dd/mm/yy' />
+    
         <TouchableOpacity style={styles.addButton}>
-          <Text style={styles.addButtonText}>Add Med</Text>
+          <View>
+            <Link href={"/ManuallyAdd"} style={styles.addButtonText}>Add Manually</Link>
+          </View>
         </TouchableOpacity>
-        <Text style={styles.redirectingText}>Redirecting...</Text>
       </View>
     </View>
   );
@@ -52,7 +51,6 @@ const styles = StyleSheet.create({
     right:120
   },
   headerText: {
-    fontSize: 25,
     fontWeight: 'bold',
     color: '#4d004d',
     right:60
@@ -62,7 +60,7 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#EBEBEB',
     marginTop: -3,
-    padding: 25,
+    padding: 22,
     borderRadius: 0,
     shadowColor: '#000',
     shadowOpacity: 0.2,
@@ -70,57 +68,42 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   label: {
-    fontSize: 17,
     fontWeight: 'bold',
     color: '#4d004d',
     marginBottom: 5,
   },
   scanButton: {
     backgroundColor: '#f8c6d2',
-    padding: 8,
-    top: -30,
-    left: 190,
+    padding: 22,
+    top: '18%',
+    width: '100%',
+    marginBottom: 4,
     alignSelf: 'flex-start',
     borderRadius: 10,
-    paddingHorizontal: 30
+    paddingHorizontal: 35,
+    
   },
   scanText: {
-    fontSize: 14,
     fontWeight: 'bold',
     color: '#4d004d',
-  },
-  orText: {
-    textAlign: 'center',
-    marginVertical: 5,
-    fontWeight: 'bold',
-    color: '#4d004d',
-    fontSize: 20
-  },
-  input: {
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 15,
-    borderColor: '#ddd',
-    borderWidth: 1,
+    left: 50,
   },
   addButton: {
     backgroundColor: '#f8c6d2',
-    padding: 12,
-    borderRadius: 15,
-    alignItems: 'center',
-    marginTop: 10,
+    padding: 22,
+    top: '18%',
+    width: '100%',
+    marginTop: 15,
+    marginBottom: 4,
+    alignSelf: 'flex-start',
+    borderRadius: 10,
+    paddingHorizontal: 35,
   },
   addButtonText: {
-    fontSize: 16,
     fontWeight: 'bold',
     color: '#4d004d',
-  },
-  redirectingText: {
-    textAlign: 'center',
-    marginTop: 10,
-    color: '#888',
+    left: 70,
   },
 });
 
-export default AddMedicineScreen;
+export default AddMedicine;
