@@ -99,6 +99,7 @@ const RootLayout = () => {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="ManuallyAdd" options={{ headerShown: false }} />
         <Stack.Screen name="HomeScreen" options={{ headerShown: false }} />
+        <Stack.Screen name="EditReminder" options={{ headerShown: false }} />
         <Stack.Screen name="AddMedicine" options={{ headerShown: false }} />
         <Stack.Screen name="LoginScreen" options={{ headerShown: false }} />
         <Stack.Screen name="MainScreen" options={{ headerShown: false }} />

@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, Image, Pressable, BackHandler } from "react-native";
 import Toast from 'react-native-toast-message';
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { database, config } from "../config/appwriteConfig";
 import { addMinutesToTimeString } from "./utils/timeConversion";
 
@@ -14,37 +14,36 @@ const ReminderNotification = () => {
   }>();
 
   const handleTaken = async () => {
-    console.log(time, medicineName, description, reminderId);
-    Toast.show({
-      type: 'success',
-      text1: '✅ Medication Taken',
-      text2: `You marked ${medicineName} as taken.`,
-    });
-
     if (reminderId) {
+      Toast.show({
+        type: 'success',
+        text1: '✅ Medication Taken',
+        text2: `You marked ${medicineName} as taken.`,
+      });
       await database.updateDocument(config.db, config.col.reminders, reminderId, {
         taken: true,
       });
-      BackHandler.exitApp();
     }
+    router.push("/MainScreen");
+    BackHandler.exitApp();
   };
 
   const handleSnooze = async () => {
-    Toast.show({
-      type: 'info',
-      text1: '🔔 Snoozed',
-      text2: `Reminder for ${medicineName} will repeat in 5 minutes.`,
-    });
-    
     if (reminderId) {
+      Toast.show({
+        type: 'info',
+        text1: '🔔 Snoozed',
+        text2: `Reminder for ${medicineName} will repeat in 5 minutes.`,
+      });
       await database.updateDocument(config.db, config.col.reminders, reminderId, {
         snoozed: true,
         notificationSend: false,
         time: addMinutesToTimeString(time, 5)
         
       });
-      BackHandler.exitApp();
     }
+    router.push("/MainScreen");
+    BackHandler.exitApp();
   };
 
   return (

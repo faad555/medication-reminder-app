@@ -6,15 +6,18 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { Text } from "./components/customizableFontElements";
 import { database, account, config } from "../config/appwriteConfig";
 import { Query } from "appwrite";
+import { useFocusEffect, useRouter } from "expo-router";
 
 export default function MedicationSchedule() {
   const [medicinesReminders, setMedicineReminders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const getTodayDateString = useCallback(() => {
     const today = new Date();
@@ -64,9 +67,66 @@ export default function MedicationSchedule() {
     fetchTodayMedicines();
   }, [fetchTodayMedicines]);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchTodayMedicines();
+    }, [fetchTodayMedicines])
+  );
+
+
+  const handleDelete = useCallback(
+    async (item: any) => {
+      try {
+        await database.deleteDocument(config.db, config.col.reminders, item.$id);
+        Toast.show({
+          type: "success",
+          text1: "Medication Deleted",
+          text2: "Successfully deleted the medication reminder.",
+        });
+        fetchTodayMedicines();
+      } catch (err) {
+        console.error("Delete error:", err);
+        Toast.show({
+          type: "error",
+          text1: "❌ Error",
+          text2: "Could not delete the medication.",
+        });
+      }
+    },
+    [fetchTodayMedicines]
+  );
+
+  const confirmDelete = useCallback(
+    (item: any) => {
+      Alert.alert(
+        "Confirm Deletion",
+        `Are you sure you want to delete "${item.medicineName}"?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: () => handleDelete(item),
+          },
+        ]
+      );
+    },
+    [handleDelete]
+  );
+
+  const handleEdit = useCallback((item: any) => {
+    router.push({
+      pathname: "/EditReminder",
+      params: {
+        docId: item.$id,
+        time: item.time, // pass the current time value
+      },
+    });
+  }, []);
+
   if (loading) {
     return (
-    <View style={styles.loaderContainer}>
+      <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#6e4b5e" />
         <Text>Loading your Today's Medications...</Text>
       </View>
@@ -75,8 +135,7 @@ export default function MedicationSchedule() {
 
   return (
     <View style={styles.container}>
-      
-      
+
       <View style={styles.header}>
         <Text style={styles.homeText}></Text>
         <Image
@@ -91,7 +150,6 @@ export default function MedicationSchedule() {
       <TouchableOpacity style={styles.dateCard}>
         <Text style={styles.dateText}>📅 Date: {getTodayDateString()}</Text>
       </TouchableOpacity>
-
       {medicinesReminders.length === 0 ? (
         <Text style={styles.noMedicineText}>
           No medicines scheduled for today!
@@ -146,6 +204,23 @@ export default function MedicationSchedule() {
                 >
                   {item.snoozed ? "Yes" : "No"}
                 </Text>
+              </View>
+
+              {/* Action buttons */}
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: "#D7BDE2" }]}
+                  onPress={() => handleEdit(item)}
+                >
+                  <Text style={styles.actionButtonText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: "#F5B7B1" }]}
+                  onPress={() => confirmDelete(item)}
+                >
+                  <Text style={styles.actionButtonText}>Delete</Text>
+                </TouchableOpacity>
+
               </View>
             </View>
           )}
@@ -219,6 +294,7 @@ const styles = StyleSheet.create({
   noMedicineText: {
     color: "#666",
     marginTop: 20,
+    textAlign: "center",
   },
   reminderText: {
     textAlign: "center",
@@ -261,6 +337,21 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 14,
+    color: "#4A235A",
+    fontWeight: "600",
+  },
+  actionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  actionButton: {
+    flex: 0.48,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  actionButtonText: {
     color: "#4A235A",
     fontWeight: "600",
   },

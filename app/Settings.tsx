@@ -19,7 +19,6 @@ const SettingsScreen = () => {
   const { size, setSize } = useFontSize();
   const router = useRouter();
 
-  // Memoized logout handler with error handling and toast notifications
   const handleLogout = useCallback(
     async (e: { preventDefault: () => void; }) => {
       e.preventDefault();
