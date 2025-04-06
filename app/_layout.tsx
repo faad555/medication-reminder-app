@@ -1,96 +1,74 @@
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { FontSizeProvider } from './context/fontSizeContext';
 
 import * as Notifications from 'expo-notifications';
-import { useEffect, useRef } from 'react';
-import { useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 
-import { useNavigationContainerRef } from '@react-navigation/native';
-import { useNotificationHandlers } from './hooks/useNotificationHandlers';
 import { Platform } from 'react-native';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const RootLayout = () => {
-  const router = useRouter();
-  const responseListener = useRef<Notifications.Subscription | null>(null);
-  // const navigationRef = useNavigationContainerRef();
-  // useNotificationHandlers(navigationRef); // 🔔 Listen for notification taps
-  
+  const [expoPushToken, setExpoPushToken] = useState('');
+  const [channels, setChannels] = useState<Notifications.NotificationChannel[]>([]);
+  const notificationListener = useRef<Notifications.EventSubscription>();
+  const responseListener = useRef<Notifications.EventSubscription>();
+
   useEffect(() => {
-    const setupNotifications = async () => {
-      // await Notifications.cancelAllScheduledNotificationsAsync();
+    registerForPushNotificationsAsync().then(token => token && setExpoPushToken(token));
 
-      // ✅ Set Android Notification Channel (Android only)
-      console.log('testt')
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('med-reminders', {
-          name: 'Medication Reminders',
-          importance: Notifications.AndroidImportance.MAX,
-          sound: 'default',
-          lightColor: '#FF231F7C',
-          vibrationPattern: [0, 250, 250, 250],
+    // ✅ Register notification category for both Android and iOS
+    Notifications.setNotificationCategoryAsync('med-reminders-category', [
+      {
+        identifier: 'TAKEN',
+        buttonTitle: '✅ Taken',
+        options: { opensAppToForeground: true },
+      },
+      {
+        identifier: 'SNOOZE',
+        buttonTitle: '🕒 Snooze',
+        options: { opensAppToForeground: false },
+      },
+    ]);
+
+    if (Platform.OS === 'android') {
+      Notifications.getNotificationChannelsAsync().then(value => setChannels(value ?? []));
+    }
+
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(
+      async response => {
+        const data = response.notification.request.content.data;
+        const reminderId = data?.reminderId;
+
+        if (!reminderId) return;
+
+        const action = response.actionIdentifier;
+        console.log('Notification action received:', action);
+
+        // Optional: Handle action (e.g., call API to mark as taken/snoozed)
+
+        router.push({
+          pathname: '/ReminderNotification',
+          params: { reminderId, time: data?.time, medicineName: data?.medicineName, description: data?.description },
         });
-
-        // await Notifications.setNotificationCategoryAsync('med-reminders-category', [
-        //   {
-        //     identifier: "SNOOZE",
-        //     buttonTitle: '🕒 Snooze',
-        //     options: {
-        //       opensAppToForeground: false,
-        //       isAuthenticationRequired: false,
-        //       isDestructive: false,
-        //     },
-        //   },
-        //   {
-        //     identifier: "TAKEN",
-        //     buttonTitle: '✅ Taken',
-        //     options: {
-        //       opensAppToForeground: false,
-        //       isAuthenticationRequired: false,
-        //       isDestructive: false,
-        //     },
-        //   },
-        // ]);
       }
+    );
+
+    return () => {
+      notificationListener.current &&
+        Notifications.removeNotificationSubscription(notificationListener.current);
+      responseListener.current &&
+        Notifications.removeNotificationSubscription(responseListener.current);
     };
-  
-    setupNotifications();
   }, []);
-
-
-  // useEffect(() => {
-  //   // Top level - only once, typically on app load
-  //   Notifications.setNotificationHandler({
-  //     handleNotification: async () => ({
-  //       shouldShowAlert: true,
-  //       shouldPlaySound: true,
-  //       shouldSetBadge: true,
-  //     }),
-  //   });
-
-  //   responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-  //     const data = response.notification.request.content.data;
-
-  //     if (data && data.medicineName && data.time) {
-  //       // Navigate to the ReminderNotification screen
-  //       router.push({
-  //         pathname: '/ReminderNotification',
-  //         params: {
-  //           time: data.time,
-  //           medicineName: data.medicineName,
-  //           description: data.description,
-  //           reminderId: data.reminderId ?? data.$id,
-  //         },
-  //       });
-  //     }
-  //   });
-
-  //   return () => {
-  //     if (responseListener.current) {
-  //      Notifications.removeNotificationSubscription(responseListener.current);
-  //     }
-  //   };
-  // }, []);
 
   return (
     <FontSizeProvider>
@@ -113,5 +91,40 @@ const RootLayout = () => {
     </FontSizeProvider>
   );
 };
+
+async function registerForPushNotificationsAsync() {
+  let token;
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('myNotificationChannel', {
+      name: 'A channel is needed for the permissions prompt to appear',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+    });
+  }
+
+  if (Device.isDevice) {
+    try {
+      const projectId =
+        Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+      if (!projectId) {
+        throw new Error('Project ID not found');
+      }
+      token = (
+        await Notifications.getExpoPushTokenAsync({
+          projectId,
+        })
+      ).data;
+      console.log('Expo Push Token:', token);
+    } catch (e) {
+      token = `${e}`;
+    }
+  } else {
+    alert('Must use physical device for Push Notifications');
+  }
+
+  return token;
+}
 
 export default RootLayout;

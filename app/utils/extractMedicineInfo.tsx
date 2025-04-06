@@ -2,12 +2,13 @@ export interface ParsedMedication {
   medicineName: string;
   medicineType: string;
   dosage: string;
+  doseAmount: number;
   quantity: number;
   frequency: string;
 }
 
-export async function parseMedicationText(text: string) {
-  var response = await parsePrescriptionTextByGrok(text);
+export async function parseMedicationText(text: string): Promise<ParsedMedication> {
+  const response = await parsePrescriptionTextByGrok(text);
   if (response.error) {
     console.error('Error parsing text:', response.message);
     return parseMedicationTextManually(text);
@@ -22,12 +23,15 @@ function parseMedicationTextManually(text: string): ParsedMedication {
     .trim()
     .toLowerCase();
 
+  // Medicine Name
   const medLineMatch = text.match(/([A-Z][A-Z0-9\s\-\/]{2,})\s?(?:mg|mcg|gm|ml|caps?|tabs?|inj|syp)/i);
   const medicineName = medLineMatch ? medLineMatch[1].trim().split(/\s+/)[1] || '' : '';
 
+  // Dosage
   const dosageMatch = raw.match(/(\d+(?:mg|mcg|ml|gm)(?:\/\d+(?:mg|mcg|ml|gm))?)/);
   const dosage = dosageMatch ? dosageMatch[1].toUpperCase() : '';
 
+  // Medicine Type
   const typeMap: Record<string, string> = {
     tab: 'Pill',
     tabs: 'Pill',
@@ -48,9 +52,11 @@ function parseMedicationTextManually(text: string): ParsedMedication {
   const typeMatch = raw.match(/\b(fc\s+)?(tab|tabs|tablet|tblts|cap|caps|capsule|syp|syrup|inj|injection|ointment|cream|patch)\b/);
   const medicineType = typeMatch ? typeMap[typeMatch[2]] : '';
 
+  // Quantity
   const qtyMatch = raw.match(/(?:qty|quantity|dispense|total)[^\d]{0,4}(\d{1,4})/i);
   const quantity = qtyMatch ? parseInt(qtyMatch[1], 10) : 0;
 
+  // Frequency
   const frequencyPatterns: Record<string, string[]> = {
     'Once a day': ['once a day', 'once daily', '1x/day', 'one time a day', 'one daily', 'one a day'],
     'Twice a day': ['twice a day', '2x/day', 'two times a day', 'bd'],
@@ -66,13 +72,40 @@ function parseMedicationTextManually(text: string): ParsedMedication {
       break;
     }
   }
-
   if (!frequency && /one every/.test(raw)) frequency = 'Once a day';
+
+  // Dose Amount
+  let doseAmount = 0;
+  const doseWords: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+  };
+
+  const doseMatch = raw.match(/\btake\s+(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/);
+  if (doseMatch) {
+    const val = doseMatch[1];
+    doseAmount = isNaN(Number(val)) ? doseWords[val] || 0 : parseInt(val, 10);
+  } else {
+    // Also catch things like "1 tablet", "2 caps"
+    const unitDoseMatch = raw.match(/\b(\d+)\s?(tabs?|caps?|tablets?|capsules?)\b/);
+    if (unitDoseMatch) {
+      doseAmount = parseInt(unitDoseMatch[1], 10);
+    }
+  }
 
   return {
     medicineName,
     medicineType,
     dosage,
+    doseAmount,
     quantity,
     frequency,
   };
@@ -100,8 +133,14 @@ async function parsePrescriptionTextByGrok(text: string) {
 
       - "dosage": The strength and unit of the medication (e.g., "500mg", "250 mcg", "5mL").
           - Handle variations like: "500 mg", "0.5gm", "mg. 500", "each tab contains 250mg".
-          - Only extract **single numeric strength + unit** that refers to the medicine.
+          - Only extract the **numeric strength + unit** related to the medicine.
+          - Do NOT include quantity or per-dose info here.
           - Return "" if not found or unclear.
+
+      - "doseAmount": The number of units taken per dose (e.g., 1, 2, 4).
+          - Parse from instructions like “take one”, “take two”, “1 tablet”, “4 caps”, “dose: 2”, etc.
+          - Accept both numeric and text values (e.g., “three” → 3).
+          - Return 0 if the per-dose amount is not clearly found.
 
       - "quantity": The total number of units dispensed.
           - Accept various notations: "QTY: 20", "20 TABS", "dispense: 15", "total: 90", "Qty=60", etc.
@@ -126,18 +165,19 @@ async function parsePrescriptionTextByGrok(text: string) {
       Parsing rules:
       - Do **not** guess or hallucinate information.
       - Be cautious with noisy, multi-line text — ignore any content not clearly linked to medication.
-      - If unsure about a value, leave it empty ("") or use 0 for quantity.
-      - Do not confuse dosage (e.g., "500mg") with quantity (e.g., "QTY: 30").
+      - If unsure about a value, leave it empty ("") or use 0 for doseAmount/quantity.
+      - Do not confuse dosage (e.g., "500mg") with quantity (e.g., "QTY: 30") or doseAmount (e.g., "take 2 tabs").
       - If conflicting values exist, prioritize the most **clearly labeled and common-sense value**.
       - Output must be **strictly valid JSON**. No headers, no markdown, no explanation, no formatting.
 
-      Your response must only include the raw JSON, starting with 'and ending with'. Any additional text will break the output.
+      Your response must only include the raw JSON, starting with '{' and ending with '}'. Any additional text will break the output.
 
       If no meaningful data is found, return:
       {
         "medicineName": "",
         "medicineType": "",
         "dosage": "",
+        "doseAmount": 0,
         "quantity": 0,
         "frequency": ""
       }
@@ -149,6 +189,7 @@ async function parsePrescriptionTextByGrok(text: string) {
       ${text}
       """
       `;
+
 
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {

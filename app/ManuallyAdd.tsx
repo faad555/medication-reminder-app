@@ -11,6 +11,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 const { config, database, account } = require("../config/appwriteConfig");
 import { scheduleReminders } from './utils/scheduleReminders';
 import { ID, Permission, Role } from 'appwrite';
+import { convertTimesToUTC } from './utils/utcTimeConversion';
 
 type MedicationData = {
   medicineName: string;
@@ -34,16 +35,20 @@ const ManuallyAdd: React.FC = () => {
   console.log('params testing', params)
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
 
+  console.log('params quanityt', params.quantity)
   const [form, setForm] = useState<MedicationData>({
     medicineName: params.medicineName || '',
     medicineType: params.medicineType || '',
-    quantity: params.dose || '',
+    quantity: params.quantity || '',
     frequency: params.frequency || '',
     time1: '',
     time2: '',
     time3: '',
     notes: '',
   });
+
+
+  console.log('quanitity', form.quantity)
 
   const [errors, setErrors] = useState<Errors>({});
   const [isTime1Visible, setTime1Visible] = useState(false);
@@ -80,7 +85,10 @@ const ManuallyAdd: React.FC = () => {
     if (!validateForm()) return;
 
     try {
-      
+      const utsTimes = convertTimesToUTC({time1: form.time1, time2: form.time2 || '', time3: form.time3 || ''})
+      form.time1 = utsTimes.time1UTC
+      form.time2 = utsTimes.time2UTC
+      form.time3 = utsTimes.time3UTC
       const medicineDoc = await database.createDocument(config.db, config.col.medicines, ID.unique(), form,  [
         Permission.read(Role.user(user.$id)),
         Permission.write(Role.user(user.$id)),
