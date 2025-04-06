@@ -1,14 +1,14 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   View,
   TextInput,
   StyleSheet,
   Text,
   Keyboard,
-  Alert,
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { account } from '../config/appwriteConfig';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
@@ -19,7 +19,7 @@ export default function OtpVerificationScreen() {
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
-  const handleChange = (text: string, index: number) => {
+  const handleChange = useCallback((text: string, index: number) => {
     if (/^\d$/.test(text)) {
       const newOtp = [...otp];
       newOtp[index] = text;
@@ -36,48 +36,62 @@ export default function OtpVerificationScreen() {
       newOtp[index] = '';
       setOtp(newOtp);
     }
-  };
+  }, [otp]);
 
-  const handleKeyPress = (
-    e: NativeSyntheticEvent<TextInputKeyPressEventData>,
-    index: number
-  ) => {
-    if (e.nativeEvent.key === 'Backspace' && otp[index] === '' && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
+  const handleKeyPress = useCallback(
+    (
+      e: NativeSyntheticEvent<TextInputKeyPressEventData>,
+      index: number
+    ) => {
+      if (e.nativeEvent.key === 'Backspace' && otp[index] === '' && index > 0) {
+        inputRefs.current[index - 1]?.focus();
+      }
+    },
+    [otp]
+  );
 
-  const confirmVerificationCode = async (verificationCode: string) => {
-    if (!userId) {
-      Alert.alert('Error', 'User ID is missing');
-      return;
-    }
-
-    try {
-      
-      const activeSession = await account.getSession('current').catch(() => null);
-    
-      if (activeSession) {
-        console.log('✅ Active session already exists:', activeSession);
-        router.push('/MainScreen');
+  const confirmVerificationCode = useCallback(
+    async (verificationCode: string) => {
+      if (!userId) {
+        Toast.show({
+          type: 'error',
+          text1: '❌ Error',
+          text2: 'User ID is missing.',
+        });
         return;
       }
 
-      //await account.deleteSessions(); // deletes all active sessions
+      try {
+        const activeSession = await account.getSession('current').catch(() => null);
+        if (activeSession) {
+          console.log('✅ Active session already exists:', activeSession);
+          router.push('/MainScreen');
+          return;
+        }
 
+        const session = await account.updatePhoneSession(userId, verificationCode);
+        console.log('✅ Session:', session);
 
-
-      const session = await account.updatePhoneSession(userId, verificationCode);
-      console.log('✅ Session:', session);
-
-      router.push({
-        pathname: '/MainScreen',
-        params: { fromLogin: 'true' }});
-    } catch (error) {
-      Alert.alert('Invalid OTP', 'Please enter the correct code.');
-      console.error('❌ Verification Error:', error);
-    }
-  };
+        router.push({
+          pathname: '/MainScreen',
+          params: { fromLogin: 'true' },
+        });
+        Toast.show({
+          type: 'success',
+          text1: '✅ Success',
+          text2: 'OTP verified successfully!',
+        });
+      } catch (error) {
+        console.error('❌ Verification Error:', error);
+        Toast.show({
+          type: 'error',
+          text1: '❌ Invalid OTP',
+          text2: 'Please enter the correct code.',
+        });
+      }
+    },
+    [userId, router]
+  );
 
   return (
     <View style={styles.container}>
@@ -99,7 +113,7 @@ export default function OtpVerificationScreen() {
           />
         ))}
       </View>
-  </View>
+    </View>
   );
 }
 
@@ -139,14 +153,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 4,
-  },
-  footerText: {
-    fontSize: 14,
-    marginTop: 30,
-    color: '#555',
-  },
-  resend: {
-    color: '#D63384',
-    fontWeight: 'bold',
   },
 });

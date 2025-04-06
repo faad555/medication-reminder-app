@@ -19,6 +19,7 @@ const MainScreen = () => {
     if(fromLogin) registerToken();
   }, []);
 
+  console.log('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone)
   return (
     <View style={styles.container}>
       

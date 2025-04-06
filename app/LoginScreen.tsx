@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { View, TextInput, TouchableOpacity, StyleSheet, ImageBackground,Image, Alert} from "react-native";
+import React, { useState, useCallback } from "react";
+import { View, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons"; 
 import { useRouter } from "expo-router";
 const localImage = require("../assets/images/loginImage.jpg");
 const localLogo = require("../assets/images/logo.png");
 import { Text, Link } from './components/customizableFontElements';
+import Toast from "react-native-toast-message";
 
 const LoginScreen = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -12,8 +13,7 @@ const LoginScreen = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const router = useRouter();
 
-   // Function to handle login
-   const handleLogin = async () => {
+  const handleLogin = useCallback(async () => {
     try {
       const response = await fetch("https://<your-project-id>.cloudfunctions.net/login", {
         method: "POST",
@@ -24,32 +24,37 @@ const LoginScreen = () => {
       const data = await response.json();
 
       if (data.success) {
-        Alert.alert("Success", data.message);
-        router.push("/MainScreen"); // Navigate to HomeScreen on successful login
+        Toast.show({
+          type: "success",
+          text1: "✅ Success",
+          text2: data.message,
+        });
+        router.push("/MainScreen");
       } else {
-        Alert.alert("Error", data.message);
+        Toast.show({
+          type: "error",
+          text1: "❌ Error",
+          text2: data.message,
+        });
       }
     } catch (error) {
-      Alert.alert("Error", "Something went wrong. Please try again.");
+      Toast.show({
+        type: "error",
+        text1: "❌ Error",
+        text2: "Something went wrong. Please try again.",
+      });
     }
-  };
+  }, [phoneNumber, password, router]);
+
   return (
     <View style={styles.container}>
-    
-      <ImageBackground
-        source={localImage} 
-        style={styles.background}
-      >
+      <ImageBackground source={localImage} style={styles.background}>
         <TouchableOpacity style={styles.backButton}>
           <Link href={"/HomeScreen"} style={styles.backText}>Back</Link>
         </TouchableOpacity>
-        <Image
-          source={localLogo} 
-          style={styles.logo}
-        />
+        <Image source={localLogo} style={styles.logo} />
       </ImageBackground>
 
-      
       <View style={styles.card}>
         <Text style={styles.title}>Login to MedRem</Text>
         <Text style={styles.subtitle}>Your Smart Medication Reminder</Text>
@@ -70,40 +75,28 @@ const LoginScreen = () => {
             value={password}
             onChangeText={setPassword}
           />
-          <TouchableOpacity
-            onPress={() => setPasswordVisible(!passwordVisible)}
-            style={styles.eyeIcon}
-          >
-            <Ionicons
-              name={passwordVisible ? "eye-off" : "eye"}
-              size={20}
-              color="gray"
-            />
+          <TouchableOpacity onPress={() => setPasswordVisible(!passwordVisible)} style={styles.eyeIcon}>
+            <Ionicons name={passwordVisible ? "eye-off" : "eye"} size={20} color="gray" />
           </TouchableOpacity>
         </View>
 
-        {/* Forgot Password */}
         <TouchableOpacity>
           <Text style={styles.forgotPassword}>Forgot password?</Text>
         </TouchableOpacity>
 
-        {/* Login Button */}
         <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
           <Text style={styles.buttonText}>Log in</Text>
         </TouchableOpacity>
 
-        {/* Signup Link */}
         <Text style={styles.signupText}>
           Don't have an account?{" "}
-          <Link href = {"/AddCaregiver"} style={styles.signupLink}>Sign up</Link>
+          <Link href={"/AddCaregiver"} style={styles.signupLink}>Sign up</Link>
         </Text>
       </View>
     </View>
   );
 };
 
-
-// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -148,7 +141,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#35134F",
     marginBottom: 50,
-    top: 30
+    top: 30,
   },
   subtitle: {
     color: "#777",
@@ -180,10 +173,10 @@ const styles = StyleSheet.create({
     color: "#777",
     alignSelf: "flex-end",
     marginTop: 10,
-    left:110
+    left: 110,
   },
   loginButton: {
-    backgroundColor: "#E75480",
+    backgroundColor: "#E75480", // You can change this to "#F8C6D2" to match the "Add your Medication" style if desired
     paddingVertical: 12,
     paddingHorizontal: 80,
     borderRadius: 20,

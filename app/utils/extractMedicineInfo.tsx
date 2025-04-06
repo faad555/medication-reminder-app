@@ -94,7 +94,6 @@ function parseMedicationTextManually(text: string): ParsedMedication {
     const val = doseMatch[1];
     doseAmount = isNaN(Number(val)) ? doseWords[val] || 0 : parseInt(val, 10);
   } else {
-    // Also catch things like "1 tablet", "2 caps"
     const unitDoseMatch = raw.match(/\b(\d+)\s?(tabs?|caps?|tablets?|capsules?)\b/);
     if (unitDoseMatch) {
       doseAmount = parseInt(unitDoseMatch[1], 10);

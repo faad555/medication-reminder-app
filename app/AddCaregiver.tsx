@@ -1,23 +1,30 @@
-import React, { useState } from "react";
-import { View, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from "react-native";
-import { Text, Link } from './components/customizableFontElements';
+import React, { useState, useCallback } from "react";
+import { View, TextInput, TouchableOpacity, StyleSheet, SafeAreaView } from "react-native";
+import { Text, Link } from "./components/customizableFontElements";
+import Toast from "react-native-toast-message";
 
 export default function AddCaregiver() {
   const [phone, setPhone] = useState("");
 
-  // Function to handle sending the invitation
-  const handleSendInvitation = () => {
+  const handleSendInvitation = useCallback(() => {
     if (!phone) {
-      Alert.alert("Error", "Please enter a phone number before sending the invitation.");
+      Toast.show({
+        type: "error",
+        text1: "❌ Error",
+        text2: "Please enter a phone number before sending the invitation.",
+      });
       return;
     }
 
-    // Simulate sending the invitation (replace this with an API call if needed)
-    Alert.alert("Success", `Invitation sent successfully to ${phone}!`);
+    Toast.show({
+      type: "success",
+      text1: "✅ Invitation Sent",
+      text2: `Invitation sent successfully to ${phone}!`,
+    });
 
     // Reset the phone number field
     setPhone("");
-  };
+  }, [phone]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -38,9 +45,9 @@ export default function AddCaregiver() {
       />
 
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: phone ? "#F8C8DC" : "#ccc" }]} // Disable button if no phone number
+        style={[styles.button, { backgroundColor: phone ? "#F8C6D2" : "#ccc" }]} // Using pastel pink if phone is entered
         onPress={handleSendInvitation}
-        disabled={!phone} // Disable button if phone is empty
+        disabled={!phone}
       >
         <Text style={styles.buttonText}>Send Invitation</Text>
       </TouchableOpacity>
@@ -69,7 +76,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 70,
   },
   header: {
-    backgroundColor: "#F8C8DC",
+    backgroundColor: "#F8C6D2", // Updated to match the add your medication button color
     paddingVertical: 15,
     alignItems: "center",
     borderRadius: 10,
@@ -78,12 +85,13 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontWeight: "bold",
-    color: "#000",
+    color: "#fff", // White text for contrast
   },
   description: {
     textAlign: "center",
     marginBottom: 20,
     top: 40,
+    color: "#333",
   },
   input: {
     borderWidth: 1,
@@ -101,7 +109,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontWeight: "bold",
-    color: "#000",
+    color: "#fff", // White text for buttons
   },
   infoBox: {
     backgroundColor: "#E8F5E9",
@@ -116,14 +124,14 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginTop: 20,
-    backgroundColor: "#F8C8DC",
+    backgroundColor: "#F8C6D2", // Matching button color
     padding: 10,
     borderRadius: 8,
     alignItems: "center",
     top: 40,
   },
   backText: {
-    color: "#000",
+    color: "#fff", // White text for contrast
     fontWeight: "bold",
   },
 });
