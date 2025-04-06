@@ -29,7 +29,6 @@ const ReminderNotification = () => {
   };
 
   const handleSnooze = async () => {
-
     if (reminderId) {
       Toast.show({
         type: 'info',

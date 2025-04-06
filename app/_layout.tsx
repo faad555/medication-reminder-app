@@ -36,7 +36,6 @@ const toastConfig: ToastConfig = {
   ),
 };
 
-
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
