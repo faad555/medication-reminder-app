@@ -1,17 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ScrollView, KeyboardAvoidingView,
-  Platform, Alert, Keyboard, TouchableWithoutFeedback
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Toast from 'react-native-toast-message';
 const { config, database, account } = require("../config/appwriteConfig");
 import { scheduleReminders } from './utils/scheduleReminders';
 import { ID, Permission, Role } from 'appwrite';
-import { convertTimesToUTC } from './utils/utcTimeConversion';
 
 type MedicationData = {
   medicineName: string;
@@ -27,15 +34,12 @@ type MedicationData = {
 type Errors = Partial<Record<keyof MedicationData, string>>;
 
 const formatTime = (date: Date) =>
-  date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }); // 24hr: "08:00"
-
+  date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }); // e.g., "08:00" in 24hr
 
 const ManuallyAdd: React.FC = () => {
   const params = useLocalSearchParams();
-  console.log('params testing', params)
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
 
-  console.log('params quanityt', params.quantity)
   const [form, setForm] = useState<MedicationData>({
     medicineName: params.medicineName || '',
     medicineType: params.medicineType || '',
@@ -46,21 +50,18 @@ const ManuallyAdd: React.FC = () => {
     time3: '',
     notes: '',
   });
-
-
-  console.log('quanitity', form.quantity)
-
   const [errors, setErrors] = useState<Errors>({});
   const [isTime1Visible, setTime1Visible] = useState(false);
   const [isTime2Visible, setTime2Visible] = useState(false);
   const [isTime3Visible, setTime3Visible] = useState(false);
 
-  const handleChange = (field: keyof MedicationData, value: string) => {
+  // useCallback to avoid unnecessary re-renders
+  const handleChange = useCallback((field: keyof MedicationData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
+  }, []);
 
-  const validateForm = (): boolean => {
+  const validateForm = useCallback((): boolean => {
     const newErrors: Errors = {};
     if (!form.medicineName) newErrors.medicineName = 'Medicine name is required';
     if (!form.medicineType) newErrors.medicineType = 'Medicine type is required';
@@ -77,40 +78,61 @@ const ManuallyAdd: React.FC = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [form]);
 
-  const handleSave = async () => {
-    const user = await account.get();
-    console.log('users idfjd', user)
-    if (!validateForm()) return;
-
+  const handleSave = useCallback(async () => {
     try {
-      const utsTimes = convertTimesToUTC({time1: form.time1, time2: form.time2 || '', time3: form.time3 || ''})
-      form.time1 = utsTimes.time1UTC
-      form.time2 = utsTimes.time2UTC
-      form.time3 = utsTimes.time3UTC
-      const medicineDoc = await database.createDocument(config.db, config.col.medicines, ID.unique(), form,  [
-        Permission.read(Role.user(user.$id)),
-        Permission.write(Role.user(user.$id)),
-      ]);
+      // Get current user; if fails, show error toast
+      const user = await account.get();
+      if (!validateForm()) {
+        Toast.show({
+          type: 'error',
+          text1: '⚠️ Validation Error',
+          text2: 'Please fix the errors before saving.',
+        });
+        return;
+      }
 
+      // Create the medicine document
+      const medicineDoc = await database.createDocument(
+        config.db,
+        config.col.medicines,
+        ID.unique(),
+        form,
+        [
+          Permission.read(Role.user(user.$id)),
+          Permission.write(Role.user(user.$id)),
+        ]
+      );
 
-      // Collect times based on frequency
+      // Build times array based on frequency (filtering out any empty strings)
       const times = [form.time1];
-      if (form.frequency === 'Twice a day' || form.frequency === 'Three times a day') times.push(form.time2);
-      if (form.frequency === 'Three times a day') times.push(form.time3);
+      if (form.frequency === 'Twice a day' || form.frequency === 'Three times a day') {
+        times.push(form.time2 || '');
+      }
+      if (form.frequency === 'Three times a day') {
+        times.push(form.time3 || '');
+      }
+      const validTimes = times.filter(Boolean);
 
       // Schedule reminders
-      console.log('times terehre', times)
-      await scheduleReminders(times.filter(Boolean), form.medicineName, form.notes, medicineDoc.$id);
+      await scheduleReminders(validTimes, form.medicineName, form.notes || '', medicineDoc.$id);
 
-      Alert.alert('Success', 'Medication saved successfully!');
+      Toast.show({
+        type: 'success',
+        text1: '✅ Success',
+        text2: 'Medication saved successfully!',
+      });
       navigation.goBack();
     } catch (err) {
       console.error(err);
-      Alert.alert('Error', 'Failed to save medication.');
+      Toast.show({
+        type: 'error',
+        text1: '❌ Error',
+        text2: 'Failed to save medication.',
+      });
     }
-  };
+  }, [form, navigation, validateForm]);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -240,7 +262,6 @@ const ManuallyAdd: React.FC = () => {
             onChangeText={(text) => handleChange('notes', text)}
             multiline
           />
-
         </ScrollView>
       </TouchableWithoutFeedback>
 

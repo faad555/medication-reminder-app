@@ -7,6 +7,35 @@ import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import Toast, {BaseToast, ToastConfig, ToastProps} from "react-native-toast-message";
+import { NotificationSettingsProvider } from './context/notificationSettingsContext';
+
+const toastConfig: ToastConfig = {
+  snoozed: (props: ToastProps) => (
+    <BaseToast
+      {...props}
+      style={{
+        borderLeftColor: '#FFA500',
+        minHeight: 100,
+        paddingVertical: 20,
+      }}
+      contentContainerStyle={{
+        paddingHorizontal: 24,
+        justifyContent: 'center',
+      }}
+      text1Style={{
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#000',
+      }}
+      text2Style={{
+        fontSize: 20,
+        color: '#333',
+      }}
+    />
+  ),
+};
+
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -25,7 +54,6 @@ const RootLayout = () => {
   useEffect(() => {
     registerForPushNotificationsAsync().then(token => token && setExpoPushToken(token));
 
-    // ✅ Register notification category for both Android and iOS
     Notifications.setNotificationCategoryAsync('med-reminders-category', [
       {
         identifier: 'TAKEN',
@@ -50,11 +78,6 @@ const RootLayout = () => {
 
         if (!reminderId) return;
 
-        const action = response.actionIdentifier;
-        console.log('Notification action received:', action);
-
-        // Optional: Handle action (e.g., call API to mark as taken/snoozed)
-
         router.push({
           pathname: '/ReminderNotification',
           params: { reminderId, time: data?.time, medicineName: data?.medicineName, description: data?.description },
@@ -71,11 +94,13 @@ const RootLayout = () => {
   }, []);
 
   return (
+    <NotificationSettingsProvider>
     <FontSizeProvider>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="ManuallyAdd" options={{ headerShown: false }} />
         <Stack.Screen name="HomeScreen" options={{ headerShown: false }} />
+        <Stack.Screen name="EditReminder" options={{ headerShown: false }} />
         <Stack.Screen name="AddMedicine" options={{ headerShown: false }} />
         <Stack.Screen name="LoginScreen" options={{ headerShown: false }} />
         <Stack.Screen name="MainScreen" options={{ headerShown: false }} />
@@ -88,7 +113,9 @@ const RootLayout = () => {
         <Stack.Screen name="MedicineReportHistory" options={{ headerShown: false }} />
         <Stack.Screen name="ReminderNotification" options={{ headerShown: false }} />
       </Stack>
+      <Toast config={toastConfig} />
     </FontSizeProvider>
+    </NotificationSettingsProvider>
   );
 };
 
