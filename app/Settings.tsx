@@ -1,90 +1,118 @@
-import React, { useState } from 'react';
+import React, { useCallback } from 'react';
 import { View, Switch, TouchableOpacity, StyleSheet } from 'react-native';
 import { useFontSize } from "./context/fontSizeContext";
 import { Text, Link } from './components/customizableFontElements';
+import Toast from 'react-native-toast-message';
 import { account } from '../config/appwriteConfig';
 import { useRouter } from "expo-router";
+import { useNotificationSettings } from './context/notificationSettingsContext';
 
 const SettingsScreen = () => {
-  const [reminderNotifications, setReminderNotifications] = useState(true);
-  const [soundAlerts, setSoundAlerts] = useState(true);
+  // Use global notification settings from context
+  const { 
+    reminderNotifications, 
+    setReminderNotifications, 
+    soundAlerts, 
+    setSoundAlerts 
+  } = useNotificationSettings();
+
   const { size, setSize } = useFontSize();
   const router = useRouter();
 
-    const handleLogout = async (e: { preventDefault: () => void; }) => {
+  // Memoized logout handler with error handling and toast notifications
+  const handleLogout = useCallback(
+    async (e: { preventDefault: () => void; }) => {
       e.preventDefault();
       try {
         await account.deleteSession('current');
-        router.push({pathname: "/HomeScreen"});
-        console.log("Logged out successfully.");
+        Toast.show({
+          type: 'success',
+          text1: '✅ Logged Out',
+          text2: 'You have been logged out successfully.',
+        });
+        router.push({ pathname: "/HomeScreen" });
       } catch (error) {
         console.error("Logout error:", error);
+        Toast.show({
+          type: 'error',
+          text1: '❌ Logout Failed',
+          text2: 'An error occurred while logging out. Please try again.',
+        });
       }
-    };
+    },
+    [router]
+  );
 
   return (
-    
     <View style={styles.container}>
       <Text style={styles.header}>Settings</Text>
       <Text style={styles.subHeader}>Customize your app</Text>
 
       <View style={styles.menuContainer}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Notifications</Text>
-        <View style={styles.row}>
-          <Text style={styles.label}>Reminder Notifications</Text>
-          <Switch 
-            value={reminderNotifications} 
-            onValueChange={setReminderNotifications} 
-          />
+        {/* Notifications Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Notifications</Text>
+          <View style={styles.row}>
+            <Text style={styles.label}>Reminder Notifications</Text>
+            <Switch 
+              value={reminderNotifications} 
+              onValueChange={setReminderNotifications} 
+            />
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Sound Alerts</Text>
+            <Switch 
+              value={soundAlerts} 
+              onValueChange={setSoundAlerts} 
+            />
+          </View>
         </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Sound Alerts</Text>
-          <Switch 
-            value={soundAlerts} 
-            onValueChange={setSoundAlerts} 
-          />
-        </View>
-      </View>
       
-      {/* Caregiver Access Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Caregiver Access</Text>
-        <TouchableOpacity style={styles.button}>
-          <Link href={"/AddCaregiver"} style={styles.buttonText}>Add a Caregiver</Link>
-        </TouchableOpacity>
-        <Text style={styles.description}>Add a trusted person who can help monitor your medications</Text>
-      </View>
+        {/* Caregiver Access Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Caregiver Access</Text>
+          <TouchableOpacity style={styles.button}>
+            <Link href={"/AddCaregiver"} style={styles.buttonText}>
+              Add a Caregiver
+            </Link>
+          </TouchableOpacity>
+          <Text style={styles.description}>
+            Add a trusted person who can help monitor your medications
+          </Text>
+        </View>
 
-      {/* Appearance Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Appearance</Text>
-        <Text style={styles.label}>Text Size</Text>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity 
-            style={[styles.textSizeButton, size === 'small' && styles.selectedButton]} 
-            onPress={() => setSize('small')}>
-            <Text style={styles.buttonText}>Small</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.textSizeButton, size === 'medium' && styles.selectedButton]} 
-            onPress={() => setSize('medium')}>
-            <Text style={styles.buttonText}>Medium</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.textSizeButton, size === 'large' && styles.selectedButton]} 
-            onPress={() => setSize('large')}>
-            <Text style={styles.buttonText}>Large</Text>
+        {/* Appearance Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Appearance</Text>
+          <Text style={styles.label}>Text Size</Text>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity 
+              style={[styles.textSizeButton, size === 'small' && styles.selectedButton]} 
+              onPress={() => setSize('small')}
+            >
+              <Text style={styles.buttonText}>Small</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.textSizeButton, size === 'medium' && styles.selectedButton]} 
+              onPress={() => setSize('medium')}
+            >
+              <Text style={styles.buttonText}>Medium</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.textSizeButton, size === 'large' && styles.selectedButton]} 
+              onPress={() => setSize('large')}
+            >
+              <Text style={styles.buttonText}>Large</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Logout Section */}
+        <View style={styles.section}>
+          <TouchableOpacity style={styles.button} onPress={handleLogout}>
+            <Text style={styles.buttonText}>Logout</Text>
           </TouchableOpacity>
         </View>
-      </View>
-
-        {/* Caregiver Access Section */}
-        <View style={styles.section}  >
-        <TouchableOpacity  style={styles.button} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
       </View>
     </View>
   );
@@ -93,7 +121,7 @@ const SettingsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 0.5,
-    backgroundColor: '#EC6A91',
+    backgroundColor: '#faa7c0',
     padding: 10,
     paddingVertical: 23,
     height: '10%',
@@ -138,16 +166,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#EC6A91',
+    backgroundColor: '#faa7c0',
     padding: 12,
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 5,
   },
-
   buttonText: {
     fontWeight: 'bold',
-    color: '#333',
+    color: '#3D2352',
   },
   description: {
     fontSize: 14,
@@ -161,13 +188,13 @@ const styles = StyleSheet.create({
   },
   textSizeButton: {
     backgroundColor: '#e0e0e0',
-    padding: 10,
+    padding: 14,
     borderRadius: 5,
-    width: 80,
+    width: 100,
     alignItems: 'center',
   },
   selectedButton: {
-    backgroundColor: '#F285A6',
+    backgroundColor: '#faa7c0',
   },
 });
 

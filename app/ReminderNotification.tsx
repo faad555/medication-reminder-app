@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, Pressable, Alert, BackHandler } from "react-native";
+import React from "react";
+import { View, Text, StyleSheet, Image, Pressable, BackHandler } from "react-native";
+import Toast from 'react-native-toast-message';
 import { useLocalSearchParams } from "expo-router";
 import { database, config } from "../config/appwriteConfig";
-import { addMinutesToUTCTimeString, convertUTCToLocalTime } from "./utils/utcTimeConversion";
+import { addMinutesToTimeString } from "./utils/timeConversion";
 
 const ReminderNotification = () => {
   const { time, medicineName, description, reminderId } = useLocalSearchParams<{
@@ -12,13 +13,13 @@ const ReminderNotification = () => {
     reminderId?: string;
   }>();
 
-  const [taken, setTaken] = useState(false); 
-  const [snoozed, setSnoozed] = useState(false);
-
   const handleTaken = async () => {
     console.log(time, medicineName, description, reminderId);
-    setTaken(true);
-    Alert.alert("✅ Medication Taken", `You marked ${medicineName} as taken.`);
+    Toast.show({
+      type: 'success',
+      text1: '✅ Medication Taken',
+      text2: `You marked ${medicineName} as taken.`,
+    });
 
     if (reminderId) {
       await database.updateDocument(config.db, config.col.reminders, reminderId, {
@@ -29,13 +30,17 @@ const ReminderNotification = () => {
   };
 
   const handleSnooze = async () => {
-    setSnoozed(true);
-    Alert.alert("🔔 Snoozed", `Reminder for ${medicineName} will repeat in 10 minutes.`);
-
+    Toast.show({
+      type: 'info',
+      text1: '🔔 Snoozed',
+      text2: `Reminder for ${medicineName} will repeat in 5 minutes.`,
+    });
+    
     if (reminderId) {
       await database.updateDocument(config.db, config.col.reminders, reminderId, {
         snoozed: true,
-        time: addMinutesToUTCTimeString(time, 5)
+        notificationSend: false,
+        time: addMinutesToTimeString(time, 5)
         
       });
       BackHandler.exitApp();
@@ -47,20 +52,20 @@ const ReminderNotification = () => {
       <View style={styles.card}>
         <Image source={require("../assets/images/Alarm.png")} style={styles.icon} />
         <Text style={styles.title}>{medicineName || "Medication Reminder"}</Text>
-        <Text style={styles.time}>Scheduled for: <Text style={styles.timeHighlight}>{convertUTCToLocalTime(time || '')}</Text></Text>
+        <Text style={styles.time}>Scheduled for: <Text style={styles.timeHighlight}>{time}</Text></Text>
         {description && <Text style={styles.description}>{description}</Text>}
 
         <View style={styles.buttons}>
           <Pressable
             onPress={handleSnooze}
-            style={[styles.button, styles.snoozeBtn, snoozed && styles.buttonActive]}
+            style={[styles.button, styles.snoozeBtn]}
           >
             <Text style={styles.buttonText}>Snooze</Text>
           </Pressable>
 
           <Pressable
             onPress={handleTaken}
-            style={[styles.button, styles.takenBtn, taken && styles.buttonActive]}
+            style={[styles.button, styles.takenBtn]}
           >
             <Text style={styles.buttonText}>Taken</Text>
           </Pressable>

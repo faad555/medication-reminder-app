@@ -1,66 +1,154 @@
-import React, { useState, useEffect } from "react";
-import { View,StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+} from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
-import { Text, Link } from './components/customizableFontElements';
+import Toast from "react-native-toast-message";
+import { Text } from "./components/customizableFontElements";
 import * as Print from "expo-print";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
+import { database, account, config } from "../config/appwriteConfig";
+import { Query } from "appwrite";
 
-const MedicineReportHistory = () => {
-  const [date, setDate] = useState("");
-  interface Medication {
-    name: string;
-    dose: number;
-  }
-  
+interface Medication {
+  name: string;
+  dose: number | string;
+}
+
+export default function MedicineReportHistory() {
+  const [loading, setLoading] = useState(false);
+
+  const [startDate, setStartDate] = useState<string>(getDefaultStartDate());
+  const [endDate, setEndDate] = useState<string>(getDefaultEndDate());
+
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
+  const [dateRangeLabel, setDateRangeLabel] = useState("");
+
   const [taken, setTaken] = useState<Medication[]>([]);
   const [missed, setMissed] = useState<Medication[]>([]);
   const [adherence, setAdherence] = useState(0);
-  
-  // Get today's date in the format "dd/mm/yyyy"
-  const getTodayDate = () => {
-    const today = new Date();
-    const day = String(today.getDate()).padStart(2, "0");
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const year = today.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
 
-  // Fetch medication report from the backend
-  const fetchMedicationReport = async () => {
-    const todayDate = getTodayDate();
-    setDate(todayDate);
+  function getDefaultEndDate(): string {
+    const today = new Date();
+    return formatDateToISO(today);
+  }
+  function getDefaultStartDate(): string {
+    const today = new Date();
+    today.setDate(today.getDate() - 6); // 7-day range
+    return formatDateToISO(today);
+  }
+
+  function formatDateToISO(dateObj: Date): string {
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const day = String(dateObj.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function formatDateForDisplay(dateStr: string): string {
+    const [year, month, day] = dateStr.split("-");
+    return `${day}/${month}/${year}`;
+  }
+
+  const onStartDatePress = useCallback(() => setShowStartPicker(true), []);
+  const onEndDatePress = useCallback(() => setShowEndPicker(true), []);
+
+  const onStartDateChange = useCallback((event: any, selectedDate?: Date) => {
+    setShowStartPicker(false);
+    if (selectedDate) {
+      setStartDate(formatDateToISO(selectedDate));
+    }
+  }, []);
+
+  const onEndDateChange = useCallback((event: any, selectedDate?: Date) => {
+    setShowEndPicker(false);
+    if (selectedDate) {
+      setEndDate(formatDateToISO(selectedDate));
+    }
+  }, []);
+
+  const fetchMedicationReport = useCallback(async () => {
+    setLoading(true);
+    const rangeLabel = `${formatDateForDisplay(startDate)} - ${formatDateForDisplay(endDate)}`;
+    setDateRangeLabel(rangeLabel);
 
     try {
-      const response = await fetch("Dawood jani add link here", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: todayDate }),
-      });
-      const data = await response.json();
+      const user = await account.get();
 
-     if (data.success) {
-        setTaken(data.taken);
-        setMissed(data.missed);
-        setAdherence(data.adherence);
-      } else {
-        Alert.alert("Error", data.message);
+      const res = await database.listDocuments(
+        config.db,
+        config.col.reminders,
+        [
+          Query.equal("userId", user.$id),
+          Query.greaterThanEqual("date", startDate),
+          Query.lessThanEqual("date", endDate),
+          Query.orderDesc("date"),
+        ]
+      );
+
+      const docs = res.documents;
+      const takenDocs = docs
+        .filter((doc: any) => doc.taken === true)
+        .map((doc: any) => ({
+          name: doc.medicineName,
+          dose: doc.medicines?.frequency || "N/A",
+        }));
+      const missedDocs = docs
+        .filter((doc: any) => doc.taken === false)
+        .map((doc: any) => ({
+          name: doc.medicineName,
+          dose: doc.medicines?.frequency || "N/A",
+        }));
+
+      const total = docs.length;
+      const ratio = total > 0 ? (takenDocs.length / total) * 100 : 0;
+      setAdherence(Math.round(ratio));
+
+      setTaken(takenDocs);
+      setMissed(missedDocs);
+
+      if (docs.length === 0) {
+        Toast.show({
+          type: "info",
+          text1: "ℹ️ No Data",
+          text2: "No medication data available in the selected range.",
+        });
       }
-    } catch (error) {
-      Alert.alert("Error", "Failed to fetch medication report.");
+    } catch (err) {
+      console.error("Fetch error:", err);
+      Toast.show({
+        type: "error",
+        text1: "❌ Error",
+        text2: "Failed to fetch medication report.",
+      });
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [startDate, endDate]);
 
-   // Generate PDF Report
-   const generatePDF = async () => {
+  useEffect(() => {
+    fetchMedicationReport();
+  }, [fetchMedicationReport]);
+
+  const generatePDF = useCallback(async () => {
     const html = `
       <html>
-        <body>
-          <h1>Medication Report</h1>
-          <p>Date: ${date}</p>
-          <h2>Taken Medications</h2>
+        <body style="font-family: Arial; padding: 20px;">
+          <h1 style="color: #6e4b5e;">Medication Report</h1>
+          <p><strong>Date Range:</strong> ${dateRangeLabel}</p>
+          <h2 style="color: green;">Taken Medications</h2>
           <ul>
             ${taken.map((med) => `<li>${med.name} - ${med.dose} dose(s)</li>`).join("")}
           </ul>
-          <h2>Missed Medications</h2>
+          <h2 style="color: red;">Missed Medications</h2>
           <ul>
             ${missed.map((med) => `<li>${med.name} - ${med.dose} dose(s)</li>`).join("")}
           </ul>
@@ -69,133 +157,233 @@ const MedicineReportHistory = () => {
         </body>
       </html>
     `;
-  
+
     try {
       const { uri } = await Print.printToFileAsync({ html });
-      Alert.alert("Success", `PDF saved to ${uri}`);
+      await Sharing.shareAsync(uri);
+      await FileSystem.deleteAsync(uri, { idempotent: true });
+      Toast.show({
+        type: "success",
+        text1: "✅ PDF Exported",
+        text2: "Report has been exported successfully.",
+      });
     } catch (error) {
-      Alert.alert("Error", "Failed to generate PDF.");
+      console.error("PDF generation error:", error);
+      Toast.show({
+        type: "error",
+        text1: "❌ Error",
+        text2: "Failed to export report as PDF.",
+      });
     }
-  };
+  }, [dateRangeLabel, taken, missed, adherence]);
 
-  useEffect(() => {
-    fetchMedicationReport();
-  }, []);
+  const renderMedication = useCallback(
+    (name: string, dose: number | string, isTaken: boolean, key: number) => (
+      <View style={styles.medicationRow} key={`${name}-${key}`}>
+        <Text style={styles.medicationText}>
+          {name} – {dose} dose(s)
+        </Text>
+        {isTaken ? (
+          <MaterialIcons name="check-circle" size={20} color="green" />
+        ) : (
+          <MaterialIcons name="cancel" size={20} color="red" />
+        )}
+      </View>
+    ),
+    []
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#6e4b5e" />
+        <Text>Loading your medication report...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.iconCircle}>
-          <Ionicons name="time-outline" size={40} color="#d47fa6" />
+          <Ionicons name="time-outline" size={24} color="#fff" />
         </View>
-        <Text style={styles.heading}>Medication History & Reports</Text>
+        <Text style={styles.headerText}>Medication History & Reports</Text>
       </View>
 
-      {/* Date */}
-      <View style={styles.dateBox}>
+      <View style={styles.dateRangeCard}>
+        <View style={styles.dateRangeRow}>
+          <TouchableOpacity onPress={onStartDatePress} style={styles.dateButton}>
+            <Text style={styles.dateButtonText}>
+              {formatDateForDisplay(startDate)}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onEndDatePress} style={styles.dateButton}>
+            <Text style={styles.dateButtonText}>
+              {formatDateForDisplay(endDate)}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={fetchMedicationReport} style={styles.fetchButton}>
+            <Text style={styles.fetchButtonText}>Generate</Text>
+          </TouchableOpacity>
+        </View>
+        {showStartPicker && (
+          <DateTimePicker
+            value={new Date(startDate)}
+            mode="date"
+            display="default"
+            onChange={onStartDateChange}
+          />
+        )}
+        {showEndPicker && (
+          <DateTimePicker
+            value={new Date(endDate)}
+            mode="date"
+            display="default"
+            onChange={onEndDateChange}
+          />
+        )}
+      </View>
+
+      <View style={styles.dateRangeBox}>
         <FontAwesome5 name="calendar-alt" size={18} color="#6e4b5e" />
-        <Text style={styles.dateText}> Date: {date}</Text>
+        <Text style={styles.dateRangeText}> Range: {dateRangeLabel}</Text>
       </View>
 
-      {/* Taken Medications */}
-      <View style={styles.section}>
+      <View style={styles.sectionCard}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Taken Medications</Text>
           <Text style={styles.statusTitle}>Taken</Text>
         </View>
-        {taken.map((med) => renderMedication(med.name, med.dose, true))}
+        {taken.length > 0 ? (
+          taken.map((med, index) => renderMedication(med.name, med.dose, true, index))
+        ) : (
+          <Text style={styles.medicationText}>No data available</Text>
+        )}
       </View>
 
-      {/* Missed Medications */}
-      <View style={styles.section}>
+      <View style={styles.sectionCard}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Missed Medications</Text>
           <Text style={styles.statusTitle}>Missed</Text>
         </View>
-        {missed.map((med) => renderMedication(med.name, med.dose, false))}
+        {missed.length > 0 ? (
+          missed.map((med, index) => renderMedication(med.name, med.dose, false, index))
+        ) : (
+          <Text style={styles.medicationText}>No data available</Text>
+        )}
       </View>
 
-      {/* Adherence Report */}
-      <View style={styles.section}>
+      <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>Adherence Report</Text>
-        <Text style={styles.reportText}>Today: {adherence}% adherence</Text>
+        <Text style={styles.reportText}>Adherence: {adherence}%</Text>
       </View>
 
-      {/* Export Report Button */}
       <TouchableOpacity style={styles.exportButton} onPress={generatePDF}>
         <Text style={styles.exportButtonText}>Export Report (PDF)</Text>
       </TouchableOpacity>
     </ScrollView>
   );
-};
-
-// Function to render each medication entry
-const renderMedication = (name: string, dose: number, isTaken: boolean) => (
-  <View style={styles.medicationRow} key={name}>
-    <Text style={styles.medicationText}>
-      {name} – {dose} dose(s)
-    </Text>
-    {isTaken ? (
-      <MaterialIcons name="check-circle" size={20} color="green" />
-    ) : (
-      <MaterialIcons name="cancel" size={20} color="red" />
-    )}
-  </View>
-);
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    padding: 20,
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: "#fce4ec",
   },
+  container: {
+    flexGrow: 1,
+    backgroundColor: "#fce4ec",
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
   header: {
+    flexDirection: "row",
+    backgroundColor: "#f8bbd0",
+    borderRadius: 10,
     alignItems: "center",
+    padding: 10,
+    marginTop: 20,
     marginBottom: 20,
   },
   iconCircle: {
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 50,
-    elevation: 3,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#d47fa6",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
   },
-  heading: {
-    fontWeight: "bold",
+  headerText: {
     color: "#6e4b5e",
-    marginTop: 10,
-    textAlign: "center",
+    fontWeight: "bold",
+    fontSize: 16,
   },
-  dateBox: {
+  dateRangeCard: {
     backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 15,
+    elevation: 2,
+  },
+  dateRangeRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 15,
-    elevation: 3,
+    justifyContent: "space-between",
   },
-  dateText: {
+  dateButton: {
+    backgroundColor: "#fce4ec",
+    borderRadius: 8,
+    padding: 8,
+    flex: 1,
+    marginRight: 5,
+  },
+  dateButtonText: {
+    color: "#6e4b5e",
     fontWeight: "bold",
+  },
+  fetchButton: {
+    backgroundColor: "#d47fa6",
+    borderRadius: 8,
+    padding: 8,
+  },
+  fetchButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  dateRangeBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 15,
+    elevation: 2,
+  },
+  dateRangeText: {
     marginLeft: 8,
     color: "#6e4b5e",
+    fontWeight: "bold",
   },
-  section: {
+  sectionCard: {
     backgroundColor: "#fff",
-    borderRadius: 15,
+    borderRadius: 10,
     padding: 15,
     marginBottom: 15,
-    elevation: 3,
+    elevation: 2,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: 10,
   },
   sectionTitle: {
     fontWeight: "bold",
     color: "#6e4b5e",
+    fontSize: 15,
   },
   statusTitle: {
     fontWeight: "bold",
@@ -204,26 +392,24 @@ const styles = StyleSheet.create({
   medicationRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 6,
+    marginVertical: 4,
   },
   medicationText: {
     color: "#333",
   },
   reportText: {
-    color: "#555",
     marginTop: 5,
+    color: "#555",
   },
   exportButton: {
     backgroundColor: "#f8bbd0",
-    padding: 12,
-    borderRadius: 15,
+    borderRadius: 10,
+    padding: 15,
     alignItems: "center",
-    elevation: 3,
+    elevation: 2,
   },
   exportButtonText: {
-    fontWeight: "bold",
     color: "#6e4b5e",
+    fontWeight: "bold",
   },
 });
-
-export default MedicineReportHistory;

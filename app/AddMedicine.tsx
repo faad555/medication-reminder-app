@@ -1,5 +1,5 @@
 import React from 'react';
-import { View,TextInput, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+import { View, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { Text, Link } from './components/customizableFontElements';
 
 const AddMedicine = () => {

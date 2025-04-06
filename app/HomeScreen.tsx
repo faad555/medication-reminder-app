@@ -8,7 +8,6 @@ import {
 } from "react-native";
 import { Text, Link } from "./components/customizableFontElements";
 import { useRouter } from "expo-router";
-import { registerPushToken } from "./utils/registerPushToken";
 
 const localImage = require("../assets/images/background.jpg");
 const localLogo = require("../assets/images/logo.png");
@@ -27,7 +26,7 @@ const WelcomeScreen = () => {
         router.replace("/MainScreen");
       } catch (error) {
         console.log("No active session found:", error.message);
-        setIsCheckingSession(false); // Show Welcome screen
+        setIsCheckingSession(false);
       }
     };
 
