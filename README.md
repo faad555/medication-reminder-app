@@ -1,58 +1,38 @@
 # Welcome to the Medication Reminder App 
-This is a mobile app built using **React Native** and **Expo** to help users manage their daily medication. Users can log medicines, get reminder notifications, and track their medication history.
-## Technical Stack
 
-- **Frontend**: React Native, Expo
-- **Backend**: Appwrite
-- **Authentication**: Phone-based OTP
-- **OCR**: MLKit and OCR.space and Expo imgePicker library
-- **Notifications**: Appwrite
-- **Database**: Appwrite Database
+## Get started
 
-## How to Run the App
-
-**Clone the repo**
-
-**Install dependencies** 
+1. Install dependencies
 
    ```bash
    npm install
    ```
-**Start the app**
-```bash
-   npx expo start
-   ```
-It will start the expo 
 
-Press s │ switch to Expo Go (for testing the app on mobile device)
-
-**Scan the QR code** using the **Expo Go app** on your Android phone OR using camera on IOS
-Start using the APP
-
-## 📱 Build APK (Optional)
-
-If you want to generate an APK file:
-
-1. Install EAS CLI:
+2. Start the app
 
    ```bash
-   npm install -g eas-cli
+    npx expo start
    ```
-   
-2. Configure the project:
-```bash
-   eas build:configure
-   ```
-3. Build the APK:
-```bash
-   eas build -p android --profile preview
-   ```
-```bash
-   eas build -p ios --profile preview
-   ```
-> You will get a download link for the APK from the Expo build service.
- 
 
+In the output, you'll find options to open the app in a
+
+- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
+- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
+- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
+- [Expo Go](https://expo.dev/go),
+- 
+OR Simply the bar code will be shown on the screen that can be scanned. it will open the app in the Expo on mobile.
+
+
+## Get a fresh project
+
+When you're ready, run:
+
+```bash
+npm run reset-project
+```
+
+This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
 ## Learn more
 

@@ -135,7 +135,6 @@ export default function MedicationSchedule() {
 
   return (
     <View style={styles.container}>
-
       <View style={styles.header}>
         <Text style={styles.homeText}></Text>
         <Image
@@ -150,6 +149,7 @@ export default function MedicationSchedule() {
       <TouchableOpacity style={styles.dateCard}>
         <Text style={styles.dateText}>📅 Date: {getTodayDateString()}</Text>
       </TouchableOpacity>
+
       {medicinesReminders.length === 0 ? (
         <Text style={styles.noMedicineText}>
           No medicines scheduled for today!
@@ -220,7 +220,6 @@ export default function MedicationSchedule() {
                 >
                   <Text style={styles.actionButtonText}>Delete</Text>
                 </TouchableOpacity>
-
               </View>
             </View>
           )}
@@ -356,4 +355,3 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-
